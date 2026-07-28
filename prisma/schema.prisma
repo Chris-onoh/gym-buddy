@@ -1,0 +1,188 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String?
+  name          String?
+  phone         String?
+  image         String?
+  role          String    @default("MEMBER")
+  weight        Float?
+  height        Float?
+  bodyFat       Float?
+  goals         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  membership    Membership?
+  bookings      Booking[]
+  progress      Progress[]
+  workoutLogs   WorkoutLog[]
+  payments      Payment[]
+  waitlists     Waitlist[]
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan      String   @default("BASIC")
+  status    String   @default("ACTIVE")
+  startDate DateTime @default(now())
+  endDate   DateTime
+  autoRenew Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Class {
+  id            String    @id @default(cuid())
+  name          String
+  description   String?
+  type          String
+  instructor    String
+  instructorBio String?
+  instructorImg String?
+  duration      Int
+  capacity      Int
+  dayOfWeek     Int
+  startTime     String
+  endTime       String
+  room          String?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  bookings      Booking[]
+  waitlists     Waitlist[]
+}
+
+model Booking {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  date      DateTime
+  status    String   @default("CONFIRMED")
+  createdAt DateTime @default(now())
+  @@unique([userId, classId, date])
+}
+
+model Waitlist {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  date      DateTime
+  position  Int
+  createdAt DateTime @default(now())
+  @@unique([userId, classId, date])
+}
+
+model Workout {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  type        String
+  difficulty  String    @default("BEGINNER")
+  duration    Int
+  image       String?
+  videoUrl    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  exercises   Exercise[]
+  workoutLogs WorkoutLog[]
+}
+
+model Exercise {
+  id          String   @id @default(cuid())
+  workoutId   String
+  workout     Workout  @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  name        String
+  sets        Int?
+  reps        Int?
+  duration    Int?
+  restTime    Int?
+  description String?
+  videoUrl    String?
+  order       Int      @default(0)
+}
+
+model WorkoutLog {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutId String?
+  workout   Workout?  @relation(fields: [workoutId], references: [id], onDelete: SetNull)
+  date      DateTime  @default(now())
+  duration  Int
+  notes     String?
+  createdAt DateTime  @default(now())
+}
+
+model Progress {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date       DateTime @default(now())
+  weight     Float?
+  bodyFat    Float?
+  muscleMass Float?
+  notes      String?
+  createdAt  DateTime @default(now())
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Float
+  currency    String   @default("NGN")
+  status      String   @default("PENDING")
+  reference   String   @unique
+  type        String
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+  @@unique([identifier, token])
+}
