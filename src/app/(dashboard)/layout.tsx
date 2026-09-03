@@ -38,6 +38,7 @@ export default function DashboardLayout({
         onSignOut={logout}
         userName={user.name}
         userEmail={user.email}
+        userRole={user.role}
       />
       <div className="flex-1 flex flex-col min-w-0">
         <Header onMenuToggle={() => setMobileOpen(true)} />

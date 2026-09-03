@@ -14,9 +14,10 @@ import {
   LogOut,
   ChevronLeft,
   Menu,
+  Shield,
 } from "lucide-react";
 
-const navItems = [
+const baseNavItems = [
   {
     href: "/dashboard",
     label: "Dashboard",
@@ -62,6 +63,7 @@ interface SidebarProps {
   onSignOut: () => void;
   userName?: string;
   userEmail?: string;
+  userRole?: string;
 }
 
 export function Sidebar({
@@ -72,8 +74,14 @@ export function Sidebar({
   onSignOut,
   userName,
   userEmail,
+  userRole,
 }: SidebarProps) {
   const pathname = usePathname();
+
+  const isAdmin = userRole === "admin" || userEmail?.toLowerCase() === "admin@gymbuddy.com";
+  const navItems = isAdmin
+    ? [...baseNavItems, { href: "/admin", label: "Admin Panel", icon: Shield }]
+    : baseNavItems;
 
   const sidebarContent = (
     <div

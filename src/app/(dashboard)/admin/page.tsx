@@ -49,14 +49,41 @@ export default function AdminPage() {
     );
   }
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="page-container max-w-lg mx-auto py-12">
+        <Card padding="lg">
+          <div className="text-center">
+            <Shield className="w-12 h-12 mx-auto mb-4 text-primary-600" />
+            <h2 className="text-xl font-bold text-gray-900">Admin Access Required</h2>
+            <p className="mt-2 text-gray-600">
+              Please sign in as administrator to manage classes, workouts, and bookings.
+            </p>
+            <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+              <Button
+                onClick={async () => {
+                  const res = await login("admin", "admin");
+                  if (res.ok) setTick((t) => t + 1);
+                }}
+              >
+                Sign In as Admin
+              </Button>
+              <Button variant="outline" onClick={() => router.push("/login")}>
+                Go to Login Page
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   if (user.role !== "admin") {
     return (
       <div className="page-container max-w-lg mx-auto py-12">
         <Card padding="lg">
           <div className="text-center">
-            <Shield className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+            <Shield className="w-12 h-12 mx-auto mb-4 text-amber-500" />
             <h2 className="text-xl font-bold text-gray-900">Restricted Area</h2>
             <p className="mt-2 text-gray-600">
               Signed in as <strong>{user.name}</strong> ({user.role || "member"}). Admin access required.

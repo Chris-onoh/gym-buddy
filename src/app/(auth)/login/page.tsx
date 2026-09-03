@@ -23,7 +23,11 @@ export default function LoginPage() {
     setIsLoading(true);
     const result = await login(email, password);
     if (result.ok) {
-      router.push("/dashboard");
+      if (email.trim().toLowerCase() === "admin" || email.trim().toLowerCase() === "admin@gymbuddy.com") {
+        router.push("/admin");
+      } else {
+        router.push("/dashboard");
+      }
     } else {
       setError(result.error || "Invalid email or password");
     }
