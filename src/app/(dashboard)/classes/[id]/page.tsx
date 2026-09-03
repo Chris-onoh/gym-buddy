@@ -1,98 +1,49 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { useAuth } from "@/lib/auth-context";
+import { getDB, getClassById, getUserBooking, bookClass, cancelBooking } from "@/lib/store";
+import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { CLASS_TYPE_ICONS, CLASS_TYPE_COLORS, DAYS_OF_WEEK, formatTime } from "@/lib/utils";
-import { CalendarDays, Clock, MapPin, Users, User, ArrowLeft, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { CalendarDays, Clock, MapPin, Users, User, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
 
 export default function ClassDetailPage() {
-  const { data: session, status } = useSession();
+  const { user, loading } = useAuth();
   const params = useParams();
   const router = useRouter();
-  const [cls, setCls] = useState<any>(null);
-  const [bookingStatus, setBookingStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [errorMsg, setErrorMsg] = useState("");
-  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [ready, setReady] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [msgType, setMsgType] = useState<"success" | "error">("success");
+  const [selectedDate, setSelectedDate] = useState("");
 
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/login");
-  }, [status, router]);
+    if (!loading && !user) router.push("/login");
+  }, [loading, user, router]);
 
   useEffect(() => {
-    if (session?.user && params.id) fetchClass();
-  }, [session, params.id]);
+    (async () => {
+      await getDB();
+      setReady(true);
+    })();
+  }, []);
 
-  const fetchClass = async () => {
-    try {
-      const res = await fetch(`/api/classes/${params.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setCls(data);
+  const cls = ready ? getClassById(String(params.id)) : undefined;
 
-        // Set next occurrence date
-        const today = new Date();
-        const dayOfWeek = data.dayOfWeek;
-        const daysUntil = (dayOfWeek - today.getDay() + 7) % 7;
-        const nextDate = new Date(today);
-        nextDate.setDate(today.getDate() + (daysUntil === 0 ? 0 : daysUntil));
-        setSelectedDate(nextDate.toISOString().split("T")[0]);
-      }
-    } catch (err) {
-      console.error(err);
+  useEffect(() => {
+    if (cls) {
+      const today = new Date();
+      const daysUntil = (cls.dayOfWeek - today.getDay() + 7) % 7;
+      const nextDate = new Date(today);
+      nextDate.setDate(today.getDate() + daysUntil);
+      setSelectedDate(nextDate.toISOString().split("T")[0]);
     }
-  };
+  }, [cls]);
 
-  const handleBook = async () => {
-    setBookingStatus("loading");
-    setErrorMsg("");
-    try {
-      const res = await fetch(`/api/classes/${params.id}/book`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: selectedDate }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setBookingStatus("success");
-        fetchClass();
-      } else {
-        setErrorMsg(data.error || "Booking failed");
-        setBookingStatus("error");
-      }
-    } catch {
-      setErrorMsg("Something went wrong");
-      setBookingStatus("error");
-    }
-  };
-
-  const handleCancel = async () => {
-    setBookingStatus("loading");
-    try {
-      const res = await fetch(`/api/classes/${params.id}/book`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: selectedDate }),
-      });
-      if (res.ok) {
-        setBookingStatus("success");
-        fetchClass();
-      } else {
-        const data = await res.json();
-        setErrorMsg(data.error || "Cancellation failed");
-        setBookingStatus("error");
-      }
-    } catch {
-      setErrorMsg("Something went wrong");
-      setBookingStatus("error");
-    }
-  };
-
-  if (!cls) {
+  if (loading || !user || !ready) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
@@ -100,12 +51,36 @@ export default function ClassDetailPage() {
     );
   }
 
-  const icon = CLASS_TYPE_ICONS[cls.type] || "💪";
-  const colorClass = CLASS_TYPE_COLORS[cls.type] || "";
+  if (!cls) {
+    return (
+      <div className="text-center py-20 text-gray-400">
+        <p className="text-lg font-medium">Class not found</p>
+        <Link href="/classes" className="text-sm text-primary-600 mt-2 inline-block">Back to classes</Link>
+      </div>
+    );
+  }
+
   const bookedCount = cls._count?.bookings || 0;
   const waitlistCount = cls._count?.waitlists || 0;
   const isFull = bookedCount >= cls.capacity;
-  const isBooked = cls.userBooking;
+  const isBooked = !!getUserBooking(user.id, cls.id);
+
+  const handleBook = () => {
+    const result = bookClass(user.id, cls.id, new Date(selectedDate).toISOString());
+    if (result.ok) {
+      setMsgType("success");
+      setMsg(result.waitlisted ? "You've joined the waitlist! We'll notify you if a spot opens." : "Class booked successfully! 🎉");
+    } else {
+      setMsgType("error");
+      setMsg(result.error || "Booking failed");
+    }
+  };
+
+  const handleCancel = () => {
+    const result = cancelBooking(user.id, cls.id);
+    setMsgType(result.ok ? "success" : "error");
+    setMsg(result.ok ? "Booking cancelled" : result.error || "Cancellation failed");
+  };
 
   return (
     <div className="page-container max-w-3xl space-y-6">
@@ -114,43 +89,30 @@ export default function ClassDetailPage() {
       </Link>
 
       <Card padding="lg">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <span className="text-5xl">{icon}</span>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{cls.name}</h1>
-              <Badge className={`mt-1 ${colorClass}`}>{cls.type}</Badge>
-            </div>
+        <div className="flex items-center gap-4 mb-4">
+          <span className="text-5xl">{CLASS_TYPE_ICONS[cls.type] || "💪"}</span>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{cls.name}</h1>
+            <Badge className={`mt-1 ${CLASS_TYPE_COLORS[cls.type] || ""}`}>{cls.type}</Badge>
           </div>
         </div>
 
-        <p className="text-gray-600 mb-6">{cls.description || "No description available."}</p>
+        <p className="text-gray-600 mb-6">{cls.description}</p>
 
         <div className="grid sm:grid-cols-2 gap-4 mb-6">
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <CalendarDays className="w-4 h-4 text-gray-400" /> {DAYS_OF_WEEK[cls.dayOfWeek]}
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Clock className="w-4 h-4 text-gray-400" /> {formatTime(cls.startTime)} - {formatTime(cls.endTime)} ({cls.duration} min)
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <MapPin className="w-4 h-4 text-gray-400" /> {cls.room || "Main Studio"}
-            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-600"><CalendarDays className="w-4 h-4 text-gray-400" /> {DAYS_OF_WEEK[cls.dayOfWeek]}</div>
+            <div className="flex items-center gap-2 text-sm text-gray-600"><Clock className="w-4 h-4 text-gray-400" /> {formatTime(cls.startTime)} - {formatTime(cls.endTime)} ({cls.duration} min)</div>
+            <div className="flex items-center gap-2 text-sm text-gray-600"><MapPin className="w-4 h-4 text-gray-400" /> {cls.room}</div>
           </div>
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <User className="w-4 h-4 text-gray-400" /> {cls.instructor}
-            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-600"><User className="w-4 h-4 text-gray-400" /> {cls.instructor}</div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Users className="w-4 h-4 text-gray-400" />
-              {bookedCount}/{cls.capacity} spots filled
-              {isFull && <span className="text-red-500 font-medium">(Full)</span>}
+              {bookedCount}/{cls.capacity} spots filled{isFull && <span className="text-red-500 font-medium">(Full)</span>}
             </div>
             {waitlistCount > 0 && (
-              <div className="flex items-center gap-2 text-sm text-amber-600">
-                <AlertCircle className="w-4 h-4" /> {waitlistCount} on waitlist
-              </div>
+              <div className="flex items-center gap-2 text-sm text-amber-600"><AlertCircle className="w-4 h-4" /> {waitlistCount} on waitlist</div>
             )}
           </div>
         </div>
@@ -162,24 +124,15 @@ export default function ClassDetailPage() {
           </div>
         )}
 
-        {errorMsg && (
-          <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 mb-4">
-            {errorMsg}
+        {msg && (
+          <div className={`p-3 rounded-xl border text-sm mb-4 flex items-center gap-2 ${
+            msgType === "success" ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"
+          }`}>
+            <CheckCircle className="w-4 h-4" /> {msg}
           </div>
         )}
 
-        {bookingStatus === "success" && !isBooked && (
-          <div className="p-3 rounded-xl bg-green-50 border border-green-200 text-sm text-green-700 mb-4 flex items-center gap-2">
-            <CheckCircle className="w-4 h-4" /> Booking cancelled successfully
-          </div>
-        )}
-        {bookingStatus === "success" && isBooked && (
-          <div className="p-3 rounded-xl bg-green-50 border border-green-200 text-sm text-green-700 mb-4 flex items-center gap-2">
-            <CheckCircle className="w-4 h-4" /> Class booked successfully!
-          </div>
-        )}
-
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <input
             type="date"
             value={selectedDate}
@@ -187,15 +140,9 @@ export default function ClassDetailPage() {
             className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
           />
           {isBooked ? (
-            <Button variant="danger" onClick={handleCancel} isLoading={bookingStatus === "loading"}>
-              Cancel Booking
-            </Button>
+            <Button variant="danger" onClick={handleCancel}>Cancel Booking</Button>
           ) : (
-            <Button
-              onClick={handleBook}
-              isLoading={bookingStatus === "loading"}
-              disabled={isFull}
-            >
+            <Button onClick={handleBook} disabled={isFull}>
               {isFull ? "Join Waitlist" : "Book Now"}
             </Button>
           )}

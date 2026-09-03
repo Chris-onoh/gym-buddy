@@ -3,14 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
-import { Dumbbell, Mail, Lock, Github, Chrome } from "lucide-react";
+import { Dumbbell, Mail, Lock } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -20,25 +21,13 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setIsLoading(true);
-
-    try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
-
-      if (result?.error) {
-        setError("Invalid email or password");
-      } else {
-        router.push("/dashboard");
-        router.refresh();
-      }
-    } catch {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setIsLoading(false);
+    const result = await login(email, password);
+    if (result.ok) {
+      router.push("/dashboard");
+    } else {
+      setError(result.error || "Invalid email or password");
     }
+    setIsLoading(false);
   };
 
   return (
@@ -51,9 +40,7 @@ export default function LoginPage() {
             </div>
             <span className="font-bold text-2xl text-gray-900">GymBuddy</span>
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Welcome back
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
           <p className="text-gray-600 mt-1">Sign in to continue your journey</p>
         </div>
 
@@ -64,7 +51,6 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
-
             <Input
               label="Email"
               type="email"
@@ -75,73 +61,31 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-
-            <div>
-              <Input
-                label="Password"
-                type="password"
-                id="password"
-                placeholder="Enter your password"
-                icon={<Lock className="w-4 h-4" />}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <div className="text-right mt-1">
-                <Link
-                  href="#"
-                  className="text-xs text-primary-600 hover:text-primary-700 font-medium"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              isLoading={isLoading}
-              className="w-full"
-              size="lg"
-            >
+            <Input
+              label="Password"
+              type="password"
+              id="password"
+              placeholder="Enter your password"
+              icon={<Lock className="w-4 h-4" />}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <Button type="submit" isLoading={isLoading} className="w-full" size="lg">
               Sign In
             </Button>
           </form>
 
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-3 bg-white text-gray-500">
-                Or continue with
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              <Chrome className="w-4 h-4" />
-              Google
-            </button>
-            <button
-              onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              <Github className="w-4 h-4" />
-              GitHub
-            </button>
+          <div className="mt-4 p-3 rounded-xl bg-primary-50 border border-primary-100 text-center">
+            <p className="text-xs text-primary-700 font-medium">
+              Demo account: demo@example.com / password123
+            </p>
           </div>
         </Card>
 
         <p className="text-center text-sm text-gray-600 mt-6">
           Don&apos;t have an account?{" "}
-          <Link
-            href="/register"
-            className="font-semibold text-primary-600 hover:text-primary-700"
-          >
+          <Link href="/register" className="font-semibold text-primary-600 hover:text-primary-700">
             Create one
           </Link>
         </p>

@@ -1,64 +1,60 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
+import { getDB, getWorkoutById, logWorkout } from "@/lib/store";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ArrowLeft, Clock, BarChart3, Play, CheckCircle2, Timer } from "lucide-react";
 
 export default function WorkoutDetailPage() {
-  const { data: session, status } = useSession();
+  const { user, loading } = useAuth();
   const params = useParams();
   const router = useRouter();
-  const [workout, setWorkout] = useState<any>(null);
-  const [logging, setLogging] = useState(false);
-  const [logSuccess, setLogSuccess] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [logged, setLogged] = useState(false);
 
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/login");
-  }, [status, router]);
+    if (!loading && !user) router.push("/login");
+  }, [loading, user, router]);
 
   useEffect(() => {
-    if (session?.user && params.id) {
-      fetch(`/api/workouts/${params.id}`)
-        .then((r) => r.json())
-        .then(setWorkout)
-        .catch(console.error);
-    }
-  }, [session, params.id]);
+    (async () => {
+      await getDB();
+      setReady(true);
+    })();
+  }, []);
 
-  const handleLogWorkout = async () => {
-    setLogging(true);
-    try {
-      const res = await fetch("/api/workouts/log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workoutId: params.id, duration: workout.duration }),
-      });
-      if (res.ok) {
-        setLogSuccess(true);
-        setTimeout(() => setLogSuccess(false), 3000);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLogging(false);
-    }
+  const workout = ready ? getWorkoutById(String(params.id)) : undefined;
+
+  const handleLog = () => {
+    if (!user || !workout) return;
+    logWorkout(user.id, workout.id, workout.duration);
+    setLogged(true);
+    setTimeout(() => setLogged(false), 3000);
   };
 
-  const diffColor = (d: string) =>
-    d === "BEGINNER" ? "success" : d === "INTERMEDIATE" ? "warning" : "danger";
-
-  if (!workout) {
+  if (loading || !user || !ready) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
       </div>
     );
   }
+
+  if (!workout) {
+    return (
+      <div className="text-center py-20 text-gray-400">
+        <p className="text-lg font-medium">Workout not found</p>
+        <Link href="/workouts" className="text-sm text-primary-600 mt-2 inline-block">Back to workouts</Link>
+      </div>
+    );
+  }
+
+  const diffVariant = workout.difficulty === "BEGINNER" ? "success" : workout.difficulty === "INTERMEDIATE" ? "warning" : "danger";
 
   return (
     <div className="page-container max-w-3xl space-y-6">
@@ -67,42 +63,37 @@ export default function WorkoutDetailPage() {
       </Link>
 
       <Card padding="lg">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{workout.title}</h1>
-            <div className="flex items-center gap-2 mt-2">
-              <Badge variant={diffColor(workout.difficulty) as any}>{workout.difficulty}</Badge>
-              <Badge variant="info">{workout.type.replace("_", " ")}</Badge>
-            </div>
-          </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">{workout.title}</h1>
+        <div className="flex items-center gap-2 mb-4">
+          <Badge variant={diffVariant as any}>{workout.difficulty}</Badge>
+          <Badge variant="info">{workout.type.replace("_", " ")}</Badge>
         </div>
 
         <div className="flex items-center gap-6 mb-6 text-sm text-gray-600">
           <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {workout.duration} minutes</span>
-          <span className="flex items-center gap-1"><BarChart3 className="w-4 h-4" /> {workout.exercises?.length || 0} exercises</span>
+          <span className="flex items-center gap-1"><BarChart3 className="w-4 h-4" /> {workout.exercises.length} exercises</span>
         </div>
 
-        <p className="text-gray-600 mb-6">{workout.description || "No description available."}</p>
+        <p className="text-gray-600 mb-6">{workout.description}</p>
 
-        {logSuccess && (
+        {logged && (
           <div className="p-3 rounded-xl bg-green-50 border border-green-200 text-sm text-green-700 mb-4 flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4" /> Workout logged successfully!
           </div>
         )}
 
-        <Button onClick={handleLogWorkout} isLoading={logging} size="lg" className="w-full sm:w-auto">
+        <Button onClick={handleLog} size="lg">
           <Play className="w-4 h-4 mr-2" /> Log This Workout
         </Button>
       </Card>
 
-      {/* Exercise List */}
       <Card>
         <CardHeader>
           <CardTitle>Exercises</CardTitle>
-          <span className="text-sm text-gray-500">{workout.exercises?.length || 0} exercises</span>
+          <span className="text-sm text-gray-500">{workout.exercises.length} exercises</span>
         </CardHeader>
         <div className="space-y-3">
-          {(workout.exercises || []).map((ex: any, i: number) => (
+          {workout.exercises.map((ex, i) => (
             <div key={ex.id} className="flex items-center gap-4 p-3 rounded-xl bg-gray-50">
               <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-sm font-bold text-primary-700 flex-shrink-0">
                 {i + 1}

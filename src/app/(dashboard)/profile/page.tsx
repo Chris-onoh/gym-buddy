@@ -1,79 +1,77 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { useAuth } from "@/lib/auth-context";
+import { getDB, getProfile, updateProfile } from "@/lib/store";
+import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Input, Textarea, Select } from "@/components/ui/Input";
-import { User, Mail, Phone, Weight, Ruler, Target, Save, Camera } from "lucide-react";
+import { Input, Textarea } from "@/components/ui/Input";
+import { User, Mail, Phone, Weight, Ruler, Save, Camera } from "lucide-react";
 
 export default function ProfilePage() {
-  const { data: session, status, update } = useSession();
+  const { user, loading, refresh } = useAuth();
   const router = useRouter();
+  const [ready, setReady] = useState(false);
   const [form, setForm] = useState({
-    name: "", email: "", phone: "", weight: "", height: "", bodyFat: "", goals: "",
+    name: "", phone: "", weight: "", height: "", bodyFat: "", goals: "",
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/login");
-  }, [status, router]);
+    if (!loading && !user) router.push("/login");
+  }, [loading, user, router]);
 
   useEffect(() => {
-    if (session?.user) {
-      fetch("/api/profile")
-        .then((r) => r.json())
-        .then((data) => {
-          setForm({
-            name: data.name || session.user?.name || "",
-            email: data.email || session.user?.email || "",
-            phone: data.phone || "",
-            weight: data.weight?.toString() || "",
-            height: data.height?.toString() || "",
-            bodyFat: data.bodyFat?.toString() || "",
-            goals: data.goals || "",
-          });
-        })
-        .catch(console.error);
-    }
-  }, [session]);
+    (async () => {
+      await getDB();
+      setReady(true);
+    })();
+  }, []);
 
-  const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  useEffect(() => {
+    if (user && ready) {
+      setForm({
+        name: user.name || "",
+        phone: user.phone || "",
+        weight: user.weight?.toString() || "",
+        height: user.height?.toString() || "",
+        bodyFat: user.bodyFat?.toString() || "",
+        goals: user.goals || "",
+      });
+    }
+  }, [user, ready]);
+
+  const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [field]: e.target.value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
     setSaving(true);
     setMessage("");
-    try {
-      const res = await fetch("/api/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name,
-          phone: form.phone,
-          weight: form.weight ? parseFloat(form.weight) : null,
-          height: form.height ? parseFloat(form.height) : null,
-          bodyFat: form.bodyFat ? parseFloat(form.bodyFat) : null,
-          goals: form.goals || null,
-        }),
-      });
-      if (res.ok) {
-        setMessage("Profile updated successfully!");
-        update();
-      } else {
-        const d = await res.json();
-        setMessage(d.error || "Update failed");
-      }
-    } catch {
-      setMessage("Something went wrong");
-    } finally {
-      setSaving(false);
-    }
+    updateProfile(user.id, {
+      name: form.name,
+      phone: form.phone,
+      weight: form.weight ? parseFloat(form.weight) : undefined,
+      height: form.height ? parseFloat(form.height) : undefined,
+      bodyFat: form.bodyFat ? parseFloat(form.bodyFat) : undefined,
+      goals: form.goals || undefined,
+    });
+    refresh();
+    setMessage("Profile updated successfully!");
+    setSaving(false);
   };
+
+  if (loading || !user || !ready) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="page-container max-w-2xl space-y-6">
@@ -83,7 +81,6 @@ export default function ProfilePage() {
       </div>
 
       <Card padding="lg">
-        {/* Avatar */}
         <div className="flex items-center gap-4 mb-8 pb-6 border-b border-gray-100">
           <div className="relative">
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-2xl font-bold">
@@ -95,14 +92,12 @@ export default function ProfilePage() {
           </div>
           <div>
             <p className="text-lg font-bold text-gray-900">{form.name || "User"}</p>
-            <p className="text-sm text-gray-500">{form.email}</p>
+            <p className="text-sm text-gray-500">{user.email}</p>
           </div>
         </div>
 
         {message && (
-          <div className={`p-3 rounded-xl text-sm mb-6 ${
-            message.includes("success") ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"
-          }`}>
+          <div className="p-3 rounded-xl bg-green-50 border border-green-200 text-sm text-green-700 mb-6">
             {message}
           </div>
         )}
@@ -110,7 +105,7 @@ export default function ProfilePage() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid sm:grid-cols-2 gap-4">
             <Input label="Full Name" id="name" icon={<User className="w-4 h-4" />} value={form.name} onChange={handleChange("name")} />
-            <Input label="Email" id="email" icon={<Mail className="w-4 h-4" />} value={form.email} disabled />
+            <Input label="Email" id="email" icon={<Mail className="w-4 h-4" />} value={user.email} disabled />
           </div>
           <Input label="Phone" id="phone" icon={<Phone className="w-4 h-4" />} value={form.phone} onChange={handleChange("phone")} placeholder="+234..." />
 

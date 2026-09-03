@@ -14,6 +14,7 @@ import {
   LogOut,
   ChevronLeft,
   Menu,
+  Shield,
 } from "lucide-react";
 
 const navItems = [
@@ -51,6 +52,11 @@ const navItems = [
     href: "/progress",
     label: "Progress",
     icon: TrendingUp,
+  },
+  {
+    href: "/admin",
+    label: "Admin",
+    icon: Shield,
   },
 ];
 

@@ -1,45 +1,37 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
+import { getDB, getUpcomingBookings, getRecentLogs } from "@/lib/store";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { CalendarDays, Dumbbell, TrendingUp, ArrowRight, Clock } from "lucide-react";
 
+const TYPE_ICONS: Record<string, string> = {
+  YOGA: "🧘", HIIT: "⚡", STRENGTH: "💪", CARDIO: "🏃", PILATES: "🤸",
+  SPINNING: "🚴", ZUMBA: "💃", BOXING: "🥊", CROSSFIT: "🏋️", MEDITATION: "🧠",
+};
+
 export default function DashboardPage() {
-  const { data: session, status } = useSession();
+  const { user, loading } = useAuth();
   const router = useRouter();
-  const [upcomingClasses, setUpcomingClasses] = useState<any[]>([]);
-  const [recentWorkouts, setRecentWorkouts] = useState<any[]>([]);
+  const [, setReady] = useState(false);
 
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/login");
-  }, [status, router]);
+    if (!loading && !user) router.push("/login");
+  }, [loading, user, router]);
 
   useEffect(() => {
-    if (session?.user) {
-      Promise.all([
-        fetch("/api/classes?upcoming=true&limit=3"),
-        fetch("/api/workouts?recent=true&limit=3"),
-      ])
-        .then(async ([classesRes, workoutsRes]) => {
-          if (classesRes.ok) {
-            const d = await classesRes.json();
-            setUpcomingClasses(d.classes || []);
-          }
-          if (workoutsRes.ok) {
-            const d = await workoutsRes.json();
-            setRecentWorkouts(d.logs || []);
-          }
-        })
-        .catch(console.error);
-    }
-  }, [session]);
+    (async () => {
+      await getDB();
+      setReady(true);
+    })();
+  }, []);
 
-  if (status === "loading") {
+  if (loading || !user) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
@@ -47,7 +39,9 @@ export default function DashboardPage() {
     );
   }
 
-  const firstName = session?.user?.name?.split(" ")[0] || "Champ";
+  const upcoming = getUpcomingBookings(user.id, 3);
+  const recentLogs = getRecentLogs(user.id, 3);
+  const firstName = user.name?.split(" ")[0] || "Champ";
 
   return (
     <div className="page-container space-y-6">
@@ -61,11 +55,10 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* Quick Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Classes", value: upcomingClasses.length, sub: "upcoming", icon: CalendarDays, color: "from-blue-500 to-blue-600" },
-          { label: "Workouts", value: recentWorkouts.length, sub: "this month", icon: Dumbbell, color: "from-primary-500 to-primary-600" },
+          { label: "Classes", value: upcoming.length, sub: "upcoming", icon: CalendarDays, color: "from-blue-500 to-blue-600" },
+          { label: "Workouts", value: recentLogs.length, sub: "this month", icon: Dumbbell, color: "from-primary-500 to-primary-600" },
           { label: "Streak", value: "5", sub: "days active", icon: TrendingUp, color: "from-accent-500 to-accent-600" },
           { label: "Membership", value: "Active", sub: "Premium plan", icon: TrendingUp, color: "from-green-500 to-green-600" },
         ].map((stat, i) => {
@@ -87,13 +80,12 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Upcoming Classes */}
         <Card>
           <CardHeader>
             <CardTitle>Upcoming Classes</CardTitle>
             <Link href="/classes" className="text-sm font-medium text-primary-600 hover:text-primary-700">View all</Link>
           </CardHeader>
-          {upcomingClasses.length === 0 ? (
+          {upcoming.length === 0 ? (
             <div className="text-center py-8 text-gray-400">
               <CalendarDays className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p>No upcoming classes</p>
@@ -101,17 +93,16 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {upcomingClasses.map((booking: any) => (
+              {upcoming.map((booking) => (
                 <div key={booking.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center text-lg">
-                      {["🧘","⚡","💪","🏃","🤸","🚴","💃","🥊","🏋️","🧠"][["YOGA","HIIT","STRENGTH","CARDIO","PILATES","SPINNING","ZUMBA","BOXING","CROSSFIT","MEDITATION"].indexOf(booking.class?.type)] || "💪"}
+                      {TYPE_ICONS[booking.class?.type || ""] || "💪"}
                     </div>
                     <div>
                       <p className="font-medium text-gray-900 text-sm">{booking.class?.name}</p>
                       <p className="text-xs text-gray-500 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {booking.class?.startTime} - {booking.class?.endTime}
+                        <Clock className="w-3 h-3" /> {booking.class?.startTime} - {booking.class?.endTime}
                       </p>
                     </div>
                   </div>
@@ -122,13 +113,12 @@ export default function DashboardPage() {
           )}
         </Card>
 
-        {/* Recent Workouts */}
         <Card>
           <CardHeader>
             <CardTitle>Recent Workouts</CardTitle>
             <Link href="/workouts" className="text-sm font-medium text-primary-600 hover:text-primary-700">View all</Link>
           </CardHeader>
-          {recentWorkouts.length === 0 ? (
+          {recentLogs.length === 0 ? (
             <div className="text-center py-8 text-gray-400">
               <Dumbbell className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p>No recent workouts</p>
@@ -136,7 +126,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {recentWorkouts.map((log: any) => (
+              {recentLogs.map((log) => (
                 <div key={log.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-accent-100 flex items-center justify-center">
@@ -155,7 +145,6 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Quick Links */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { href: "/classes", label: "Class Schedule", icon: "📅" },

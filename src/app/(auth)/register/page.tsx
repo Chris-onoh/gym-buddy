@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
@@ -10,6 +11,7 @@ import { Dumbbell, Mail, Lock, User, Phone } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -20,9 +22,7 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleChange = (field: string) => (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [field]: e.target.value });
   };
 
@@ -34,38 +34,19 @@ export default function RegisterPage() {
       setError("Passwords do not match");
       return;
     }
-
     if (formData.password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
     }
 
     setIsLoading(true);
-
-    try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          password: formData.password,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Registration failed");
-      } else {
-        router.push("/login?registered=true");
-      }
-    } catch {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setIsLoading(false);
+    const result = await register(formData.name, formData.email, formData.password, formData.phone);
+    if (result.ok) {
+      router.push("/dashboard");
+    } else {
+      setError(result.error || "Registration failed");
     }
+    setIsLoading(false);
   };
 
   return (
@@ -78,9 +59,7 @@ export default function RegisterPage() {
             </div>
             <span className="font-bold text-2xl text-gray-900">GymBuddy</span>
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Create your account
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
           <p className="text-gray-600 mt-1">Start your fitness journey today</p>
         </div>
 
@@ -91,67 +70,17 @@ export default function RegisterPage() {
                 {error}
               </div>
             )}
-
-            <Input
-              label="Full Name"
-              type="text"
-              id="name"
-              placeholder="John Doe"
-              icon={<User className="w-4 h-4" />}
-              value={formData.name}
-              onChange={handleChange("name")}
-              required
-            />
-
-            <Input
-              label="Email"
-              type="email"
-              id="email"
-              placeholder="you@example.com"
-              icon={<Mail className="w-4 h-4" />}
-              value={formData.email}
-              onChange={handleChange("email")}
-              required
-            />
-
-            <Input
-              label="Phone (optional)"
-              type="tel"
-              id="phone"
-              placeholder="+234..."
-              icon={<Phone className="w-4 h-4" />}
-              value={formData.phone}
-              onChange={handleChange("phone")}
-            />
-
-            <Input
-              label="Password"
-              type="password"
-              id="password"
-              placeholder="Min. 6 characters"
-              icon={<Lock className="w-4 h-4" />}
-              value={formData.password}
-              onChange={handleChange("password")}
-              required
-            />
-
-            <Input
-              label="Confirm Password"
-              type="password"
-              id="confirmPassword"
-              placeholder="Re-enter password"
-              icon={<Lock className="w-4 h-4" />}
-              value={formData.confirmPassword}
-              onChange={handleChange("confirmPassword")}
-              required
-            />
-
-            <Button
-              type="submit"
-              isLoading={isLoading}
-              className="w-full"
-              size="lg"
-            >
+            <Input label="Full Name" type="text" id="name" placeholder="John Doe"
+              icon={<User className="w-4 h-4" />} value={formData.name} onChange={handleChange("name")} required />
+            <Input label="Email" type="email" id="email" placeholder="you@example.com"
+              icon={<Mail className="w-4 h-4" />} value={formData.email} onChange={handleChange("email")} required />
+            <Input label="Phone (optional)" type="tel" id="phone" placeholder="+234..."
+              icon={<Phone className="w-4 h-4" />} value={formData.phone} onChange={handleChange("phone")} />
+            <Input label="Password" type="password" id="password" placeholder="Min. 6 characters"
+              icon={<Lock className="w-4 h-4" />} value={formData.password} onChange={handleChange("password")} required />
+            <Input label="Confirm Password" type="password" id="confirmPassword" placeholder="Re-enter password"
+              icon={<Lock className="w-4 h-4" />} value={formData.confirmPassword} onChange={handleChange("confirmPassword")} required />
+            <Button type="submit" isLoading={isLoading} className="w-full" size="lg">
               Create Account
             </Button>
           </form>
@@ -159,10 +88,7 @@ export default function RegisterPage() {
 
         <p className="text-center text-sm text-gray-600 mt-6">
           Already have an account?{" "}
-          <Link
-            href="/login"
-            className="font-semibold text-primary-600 hover:text-primary-700"
-          >
+          <Link href="/login" className="font-semibold text-primary-600 hover:text-primary-700">
             Sign in
           </Link>
         </p>
