@@ -53,9 +53,9 @@ export default function LoginPage() {
             )}
             <Input
               label="Email"
-              type="email"
+              type="text"
               id="email"
-              placeholder="you@example.com"
+              placeholder="you@example.com or admin"
               icon={<Mail className="w-4 h-4" />}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -76,9 +76,12 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-4 p-3 rounded-xl bg-primary-50 border border-primary-100 text-center">
+          <div className="mt-4 p-3 rounded-xl bg-primary-50 border border-primary-100 text-center space-y-1">
             <p className="text-xs text-primary-700 font-medium">
-              Demo account: demo@example.com / password123
+              Demo: demo@example.com / password123
+            </p>
+            <p className="text-xs text-primary-700 font-medium">
+              Admin: admin / admin
             </p>
           </div>
         </Card>
