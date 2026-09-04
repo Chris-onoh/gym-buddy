@@ -78,10 +78,7 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
 
-  const isAdmin = userRole === "admin" || userEmail?.toLowerCase() === "admin@gymbuddy.com";
-  const navItems = isAdmin
-    ? [...baseNavItems, { href: "/admin", label: "Admin Panel", icon: Shield }]
-    : baseNavItems;
+  const navItems = baseNavItems;
 
   const sidebarContent = (
     <div

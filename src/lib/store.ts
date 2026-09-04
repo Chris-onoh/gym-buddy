@@ -284,11 +284,11 @@ export async function getDB(): Promise<DB> {
   const adminHash = await sha256("admin");
   const admin: User = {
     id: "u_admin",
-    name: "Admin",
+    name: "Admin Manager",
     email: "admin@gymbuddy.com",
     passwordHash: adminHash,
     role: "admin",
-    createdAt: todayStr(),
+    createdAt: new Date(Date.now() - 120 * 86400000).toISOString(),
   };
   db.users.push(admin);
 
@@ -299,27 +299,43 @@ export async function getDB(): Promise<DB> {
     name: "Alex Demo",
     email: "demo@example.com",
     passwordHash: hash,
-    phone: "+2348000000000",
+    phone: "+2348031234567",
     weight: 75,
     height: 175,
     bodyFat: 18,
     goals: "Build muscle and stay consistent",
     role: "member",
-    createdAt: todayStr(),
+    createdAt: new Date(Date.now() - 90 * 86400000).toISOString(),
   };
   db.users.push(demo);
 
-  // Demo membership (PREMIUM, 1 year)
-  const end = new Date();
-  end.setFullYear(end.getFullYear() + 1);
-  db.memberships.push({
-    userId: demo.id,
-    plan: "PREMIUM",
-    status: "ACTIVE",
-    startDate: todayStr(),
-    endDate: end.toISOString(),
-    autoRenew: true,
-  });
+  // Realistic extra members
+  const extraMembers: Omit<User, "passwordHash">[] = [
+    { id: "u_chidi", name: "Chidi Okonkwo", email: "chidi.o@gmail.com", phone: "+2348023456789", weight: 82, height: 180, bodyFat: 15, goals: "Strength training & muscle mass", role: "member", createdAt: new Date(Date.now() - 60 * 86400000).toISOString() },
+    { id: "u_fatima", name: "Fatima Bello", email: "fatima.bello@yahoo.com", phone: "+2348056789012", weight: 62, height: 165, bodyFat: 22, goals: "Fat loss & flexibility", role: "member", createdAt: new Date(Date.now() - 45 * 86400000).toISOString() },
+    { id: "u_david", name: "David Adeleke", email: "davido.fitness@outlook.com", phone: "+2348098765432", weight: 88, height: 185, bodyFat: 14, goals: "Bodybuilding & endurance", role: "member", createdAt: new Date(Date.now() - 30 * 86400000).toISOString() },
+    { id: "u_blessing", name: "Blessing Amadi", email: "blessing.a@hotmail.com", phone: "+2348123456789", weight: 68, height: 170, bodyFat: 20, goals: "Core strength & cardio", role: "member", createdAt: new Date(Date.now() - 25 * 86400000).toISOString() },
+    { id: "u_emeka", name: "Emeka Vance", email: "emeka.vance@gmail.com", phone: "+2348145678901", weight: 90, height: 182, bodyFat: 16, goals: "Powerlifting", role: "member", createdAt: new Date(Date.now() - 15 * 86400000).toISOString() },
+    { id: "u_aisha", name: "Aisha Abubakar", email: "aisha.a@yahoo.com", phone: "+2348167890123", weight: 58, height: 160, bodyFat: 21, goals: "Yoga & mental health", role: "member", createdAt: new Date(Date.now() - 10 * 86400000).toISOString() },
+  ];
+
+  for (const m of extraMembers) {
+    db.users.push({ ...m, passwordHash: hash });
+  }
+
+  // Memberships for all users
+  const end1Y = new Date(); end1Y.setFullYear(end1Y.getFullYear() + 1);
+  const end1M = new Date(); end1M.setMonth(end1M.getMonth() + 1);
+
+  db.memberships.push(
+    { userId: demo.id, plan: "PREMIUM", status: "ACTIVE", startDate: new Date(Date.now() - 30 * 86400000).toISOString(), endDate: end1Y.toISOString(), autoRenew: true },
+    { userId: "u_chidi", plan: "ELITE", status: "ACTIVE", startDate: new Date(Date.now() - 60 * 86400000).toISOString(), endDate: end1Y.toISOString(), autoRenew: true },
+    { userId: "u_fatima", plan: "PREMIUM", status: "ACTIVE", startDate: new Date(Date.now() - 45 * 86400000).toISOString(), endDate: end1M.toISOString(), autoRenew: false },
+    { userId: "u_david", plan: "ELITE", status: "ACTIVE", startDate: new Date(Date.now() - 30 * 86400000).toISOString(), endDate: end1Y.toISOString(), autoRenew: true },
+    { userId: "u_blessing", plan: "BASIC", status: "ACTIVE", startDate: new Date(Date.now() - 25 * 86400000).toISOString(), endDate: end1M.toISOString(), autoRenew: true },
+    { userId: "u_emeka", plan: "BASIC", status: "ACTIVE", startDate: new Date(Date.now() - 15 * 86400000).toISOString(), endDate: end1M.toISOString(), autoRenew: false },
+    { userId: "u_aisha", plan: "PREMIUM", status: "ACTIVE", startDate: new Date(Date.now() - 10 * 86400000).toISOString(), endDate: end1Y.toISOString(), autoRenew: true }
+  );
 
   // 5 weeks of progress entries for the demo chart
   for (let i = 28; i >= 0; i -= 7) {
@@ -333,42 +349,56 @@ export async function getDB(): Promise<DB> {
     });
   }
 
-  // A couple of bookings for the demo dashboard
-  const yoga = db.classes[0];
-  const spin = db.classes[5];
+  // Active bookings across classes for various members
   const nextDate = (dow: number) => {
     const d = new Date();
     d.setDate(d.getDate() + ((dow - d.getDay() + 7) % 7));
     return d.toISOString();
   };
-  db.bookings.push(
-    { id: uid(), userId: demo.id, classId: yoga.id, date: nextDate(yoga.dayOfWeek), status: "CONFIRMED" },
-    { id: uid(), userId: demo.id, classId: spin.id, date: nextDate(spin.dayOfWeek), status: "CONFIRMED" }
-  );
 
-  // Some workout logs
+  const usersList = [demo.id, "u_chidi", "u_fatima", "u_david", "u_blessing", "u_emeka", "u_aisha"];
+  db.classes.forEach((c, idx) => {
+    const u1 = usersList[idx % usersList.length];
+    const u2 = usersList[(idx + 1) % usersList.length];
+    db.bookings.push(
+      { id: uid(), userId: u1, classId: c.id, date: nextDate(c.dayOfWeek), status: "CONFIRMED" },
+      { id: uid(), userId: u2, classId: c.id, date: nextDate(c.dayOfWeek), status: "CONFIRMED" }
+    );
+  });
+
+  // Workout logs
   db.workoutLogs.push(
     { id: uid(), userId: demo.id, workoutId: db.workouts[0].id, date: new Date(Date.now() - 2 * 86400000).toISOString(), duration: 30 },
     { id: uid(), userId: demo.id, workoutId: db.workouts[1].id, date: new Date(Date.now() - 5 * 86400000).toISOString(), duration: 45 },
-    { id: uid(), userId: demo.id, workoutId: db.workouts[3].id, date: new Date(Date.now() - 9 * 86400000).toISOString(), duration: 20 }
+    { id: uid(), userId: "u_chidi", workoutId: db.workouts[1].id, date: new Date(Date.now() - 1 * 86400000).toISOString(), duration: 50 },
+    { id: uid(), userId: "u_fatima", workoutId: db.workouts[2].id, date: new Date(Date.now() - 3 * 86400000).toISOString(), duration: 25 },
+    { id: uid(), userId: "u_david", workoutId: db.workouts[4].id, date: new Date(Date.now() - 4 * 86400000).toISOString(), duration: 60 }
   );
 
-  // Payment history
-  const mkPayment = (amount: number, type: string, desc: string, daysAgo: number, status = "COMPLETED"): Payment => ({
+  // Payment history for all users
+  const mkPay = (uId: string, amount: number, type: string, desc: string, daysAgo: number): Payment => ({
     id: uid(),
-    userId: demo.id,
+    userId: uId,
     amount,
     currency: "NGN",
-    status,
+    status: "COMPLETED",
     reference: "GB-" + Math.random().toString(36).slice(2, 10).toUpperCase(),
     type,
     description: desc,
     createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString(),
   });
+
   db.payments.push(
-    mkPayment(35000, "MEMBERSHIP", "Premium membership - monthly", 30),
-    mkPayment(15000, "PT_SESSION", "Personal training session x2", 12),
-    mkPayment(5000, "CLASS_PACK", "Class pack top-up", 3)
+    mkPay(demo.id, 35000, "MEMBERSHIP", "Premium Membership - Monthly", 30),
+    mkPay(demo.id, 15000, "PT_SESSION", "Personal Training Session x2", 12),
+    mkPay(demo.id, 5000, "CLASS_PACK", "Class Pack Top-up", 3),
+    mkPay("u_chidi", 65000, "MEMBERSHIP", "Elite Membership - Annual", 60),
+    mkPay("u_chidi", 25000, "SUPPLEMENTS", "Whey Protein & Creatine", 14),
+    mkPay("u_fatima", 35000, "MEMBERSHIP", "Premium Membership - Monthly", 45),
+    mkPay("u_david", 65000, "MEMBERSHIP", "Elite Membership - Annual", 30),
+    mkPay("u_blessing", 15000, "MEMBERSHIP", "Basic Membership - Monthly", 25),
+    mkPay("u_emeka", 15000, "MEMBERSHIP", "Basic Membership - Monthly", 15),
+    mkPay("u_aisha", 35000, "MEMBERSHIP", "Premium Membership - Monthly", 10)
   );
 
   saveDB(db);
@@ -707,3 +737,111 @@ export function deleteProgress(userId: string, id: string) {
   db.progress = db.progress.filter((p) => p.id !== id || p.userId !== userId);
   saveDB(db);
 }
+
+// ---------- Admin CRUD Operations ----------
+
+export function addClass(data: Omit<GymClass, "id">): GymClass {
+  const db = cache!;
+  const newClass: GymClass = { ...data, id: uid() };
+  db.classes.push(newClass);
+  saveDB(db);
+  return newClass;
+}
+
+export function updateClass(id: string, data: Partial<GymClass>): GymClass | undefined {
+  const db = cache!;
+  const cls = db.classes.find((c) => c.id === id);
+  if (!cls) return undefined;
+  Object.assign(cls, data);
+  saveDB(db);
+  return cls;
+}
+
+export function deleteClass(id: string) {
+  const db = cache!;
+  db.classes = db.classes.filter((c) => c.id !== id);
+  db.bookings = db.bookings.filter((b) => b.classId !== id);
+  db.waitlists = db.waitlists.filter((w) => w.classId !== id);
+  saveDB(db);
+}
+
+export function addWorkout(data: Omit<Workout, "id" | "exercises"> & { exercises: Omit<Exercise, "id">[] }): Workout {
+  const db = cache!;
+  const newWorkout: Workout = {
+    ...data,
+    id: uid(),
+    exercises: data.exercises.map((e) => ({ ...e, id: uid() })),
+  };
+  db.workouts.push(newWorkout);
+  saveDB(db);
+  return newWorkout;
+}
+
+export function updateWorkout(id: string, data: Partial<Workout>): Workout | undefined {
+  const db = cache!;
+  const w = db.workouts.find((item) => item.id === id);
+  if (!w) return undefined;
+  Object.assign(w, data);
+  saveDB(db);
+  return w;
+}
+
+export function deleteWorkout(id: string) {
+  const db = cache!;
+  db.workouts = db.workouts.filter((w) => w.id !== id);
+  db.workoutLogs = db.workoutLogs.filter((l) => l.workoutId !== id);
+  saveDB(db);
+}
+
+export function updateUserRole(userId: string, role: "member" | "admin") {
+  const db = cache!;
+  const u = db.users.find((user) => user.id === userId);
+  if (u) {
+    u.role = role;
+    saveDB(db);
+  }
+}
+
+export function updateUserMembershipPlan(userId: string, plan: string) {
+  const db = cache!;
+  const m = db.memberships.find((mem) => mem.userId === userId);
+  if (m) {
+    m.plan = plan;
+    saveDB(db);
+  } else {
+    const end = new Date(); end.setMonth(end.getMonth() + 1);
+    db.memberships.push({
+      userId,
+      plan,
+      status: "ACTIVE",
+      startDate: todayStr(),
+      endDate: end.toISOString(),
+      autoRenew: true,
+    });
+    saveDB(db);
+  }
+}
+
+export function deleteUser(userId: string) {
+  const db = cache!;
+  db.users = db.users.filter((u) => u.id !== userId);
+  db.memberships = db.memberships.filter((m) => m.userId !== userId);
+  db.bookings = db.bookings.filter((b) => b.userId !== userId);
+  db.workoutLogs = db.workoutLogs.filter((l) => l.userId !== userId);
+  db.progress = db.progress.filter((p) => p.userId !== userId);
+  db.payments = db.payments.filter((p) => p.userId !== userId);
+  saveDB(db);
+}
+
+export function deleteBooking(id: string) {
+  const db = cache!;
+  db.bookings = db.bookings.filter((b) => b.id !== id);
+  saveDB(db);
+}
+
+export function deletePayment(id: string) {
+  const db = cache!;
+  db.payments = db.payments.filter((p) => p.id !== id);
+  saveDB(db);
+}
+
