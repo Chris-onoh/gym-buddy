@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
@@ -39,9 +39,9 @@ export default function DashboardLayout({
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
         onSignOut={logout}
-        userName={user.name}
-        userEmail={user.email}
-        userRole={user.role}
+        userName={user?.name}
+        userEmail={user?.email}
+        userRole={user?.role}
       />
       <div className="flex-1 flex flex-col min-w-0">
         <Header onMenuToggle={() => setMobileOpen(true)} />
