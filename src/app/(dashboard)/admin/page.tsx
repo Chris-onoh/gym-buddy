@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -53,7 +53,8 @@ export default function AdminPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
-  const [, setTick] = useState(0);
+  const [switchError, setSwitchError] = useState("");
+  const hasAttemptedAdminLogin = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -62,7 +63,22 @@ export default function AdminPage() {
     })();
   }, []);
 
-  if (loading || !ready) {
+  useEffect(() => {
+    if (loading || !ready || user?.role === "admin" || hasAttemptedAdminLogin.current) {
+      return;
+    }
+
+    hasAttemptedAdminLogin.current = true;
+    login("admin", "admin").then((result) => {
+      if (!result.ok) {
+        setSwitchError(
+          result.error || "Unable to open the administrator account."
+        );
+      }
+    });
+  }, [loading, ready, user?.role, login]);
+
+  if (loading || !ready || (!switchError && user?.role !== "admin")) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
@@ -70,56 +86,19 @@ export default function AdminPage() {
     );
   }
 
-  if (!user) {
+  if (user?.role !== "admin") {
     return (
       <div className="page-container max-w-lg mx-auto py-12">
         <Card padding="lg">
           <div className="text-center">
-            <Shield className="w-12 h-12 mx-auto mb-4 text-primary-600" />
-            <h2 className="text-xl font-bold text-gray-900">Admin Access Required</h2>
+            <Shield className="w-12 h-12 mx-auto mb-4 text-red-500" />
+            <h2 className="text-xl font-bold text-gray-900">Unable to open admin</h2>
             <p className="mt-2 text-gray-600">
-              Please sign in as administrator to manage classes, workouts, members, and revenue.
+              {switchError || "The administrator session could not be started."}
             </p>
-            <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-              <Button
-                onClick={async () => {
-                  const res = await login("admin", "admin");
-                  if (res.ok) setTick((t) => t + 1);
-                }}
-              >
-                Sign In as Admin
-              </Button>
+            <div className="mt-6">
               <Button variant="outline" onClick={() => router.push("/login")}>
                 Go to Login Page
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  if (user.role !== "admin") {
-    return (
-      <div className="page-container max-w-lg mx-auto py-12">
-        <Card padding="lg">
-          <div className="text-center">
-            <Shield className="w-12 h-12 mx-auto mb-4 text-amber-500" />
-            <h2 className="text-xl font-bold text-gray-900">Restricted Area</h2>
-            <p className="mt-2 text-gray-600">
-              Signed in as <strong>{user.name}</strong> ({user.role || "member"}). Admin privileges required.
-            </p>
-            <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-              <Button
-                onClick={async () => {
-                  const res = await login("admin", "admin");
-                  if (res.ok) setTick((t) => t + 1);
-                }}
-              >
-                Switch to Admin
-              </Button>
-              <Button variant="outline" onClick={() => router.push("/login")}>
-                Log in differently
               </Button>
             </div>
           </div>

@@ -242,6 +242,24 @@ const SEED_WORKOUTS: (Omit<Workout, "id" | "exercises"> & { exercises: Omit<Exer
 
 let cache: DB | null = null;
 
+async function ensureAdminAccount(db: DB): Promise<boolean> {
+  const hasAdmin = db.users.some(
+    (user) => user.email.toLowerCase() === "admin@gymbuddy.com"
+  );
+
+  if (hasAdmin) return false;
+
+  db.users.push({
+    id: "u_admin",
+    name: "System Administrator",
+    email: "admin@gymbuddy.com",
+    passwordHash: await sha256("admin"),
+    role: "admin",
+    createdAt: new Date().toISOString(),
+  });
+  return true;
+}
+
 function seedDB(): DB {
   const db: DB = {
     users: [],
@@ -266,13 +284,17 @@ function seedDB(): DB {
 }
 
 export async function getDB(): Promise<DB> {
-  if (cache) return cache;
+  if (cache) {
+    if (await ensureAdminAccount(cache)) saveDB(cache);
+    return cache;
+  }
   if (typeof window === "undefined") return seedDB();
 
   const raw = window.localStorage.getItem(DB_KEY);
   if (raw) {
     try {
       cache = JSON.parse(raw) as DB;
+      if (await ensureAdminAccount(cache)) saveDB(cache);
       return cache;
     } catch {
       // fall through to reseed
