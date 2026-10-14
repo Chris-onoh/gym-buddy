@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
   getDB,
@@ -50,11 +49,12 @@ type Tab = "overview" | "classes" | "workouts" | "members" | "bookings" | "payme
 
 export default function AdminPage() {
   const { user, loading, login, logout } = useAuth();
-  const router = useRouter();
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
-  const [switchError, setSwitchError] = useState("");
-  const hasAttemptedAdminLogin = useRef(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -63,22 +63,7 @@ export default function AdminPage() {
     })();
   }, []);
 
-  useEffect(() => {
-    if (loading || !ready || user?.role === "admin" || hasAttemptedAdminLogin.current) {
-      return;
-    }
-
-    hasAttemptedAdminLogin.current = true;
-    login("admin", "admin").then((result) => {
-      if (!result.ok) {
-        setSwitchError(
-          result.error || "Unable to open the administrator account."
-        );
-      }
-    });
-  }, [loading, ready, user?.role, login]);
-
-  if (loading || !ready || (!switchError && user?.role !== "admin")) {
+  if (loading || !ready) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
@@ -86,22 +71,51 @@ export default function AdminPage() {
     );
   }
 
+  async function handleAdminLogin(event: React.FormEvent) {
+    event.preventDefault();
+    setLoginError("");
+    if (username.trim() !== "admin" || password !== "admin") {
+      setLoginError("Incorrect administrator username or password.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    const result = await login("admin", "admin");
+    setIsSubmitting(false);
+    if (!result.ok) setLoginError(result.error || "Unable to sign in as administrator.");
+  }
+
   if (user?.role !== "admin") {
     return (
-      <div className="page-container max-w-lg mx-auto py-12">
+      <div className="page-container mx-auto max-w-lg py-12">
         <Card padding="lg">
           <div className="text-center">
             <Shield className="w-12 h-12 mx-auto mb-4 text-red-500" />
-            <h2 className="text-xl font-bold text-gray-900">Unable to open admin</h2>
-            <p className="mt-2 text-gray-600">
-              {switchError || "The administrator session could not be started."}
-            </p>
-            <div className="mt-6">
-              <Button variant="outline" onClick={() => router.push("/login")}>
-                Go to Login Page
-              </Button>
-            </div>
+            <h2 className="text-xl font-bold text-balance text-gray-900">Administrator sign in</h2>
+            <p className="mt-2 text-pretty text-gray-600">Enter the administrator username and password to continue.</p>
           </div>
+          <form onSubmit={handleAdminLogin} className="mt-6 space-y-5">
+            {loginError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{loginError}</p>}
+            <Input
+              label="Username"
+              type="text"
+              id="admin-username"
+              autoComplete="username"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              required
+            />
+            <Input
+              label="Password"
+              type="password"
+              id="admin-password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
+            <Button type="submit" isLoading={isSubmitting} className="w-full" size="lg">Log in as admin</Button>
+          </form>
         </Card>
       </div>
     );

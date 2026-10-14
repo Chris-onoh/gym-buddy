@@ -306,122 +306,41 @@ export async function getDB(): Promise<DB> {
   const adminHash = await sha256("admin");
   const admin: User = {
     id: "u_admin",
-    name: "Admin Manager",
+    name: "System Administrator",
     email: "admin@gymbuddy.com",
     passwordHash: adminHash,
     role: "admin",
-    createdAt: new Date(Date.now() - 120 * 86400000).toISOString(),
+    createdAt: new Date().toISOString(),
   };
   db.users.push(admin);
 
-  // Seed demo user (async hash)
+  // Seed standard demo member account
   const hash = await sha256("password123");
   const demo: User = {
     id: "u_demo",
-    name: "Alex Demo",
+    name: "Alex Johnson",
     email: "demo@example.com",
     passwordHash: hash,
-    phone: "+2348031234567",
+    phone: "+2348030000000",
     weight: 75,
     height: 175,
     bodyFat: 18,
-    goals: "Build muscle and stay consistent",
+    goals: "Stay fit and consistent",
     role: "member",
-    createdAt: new Date(Date.now() - 90 * 86400000).toISOString(),
+    createdAt: new Date().toISOString(),
   };
   db.users.push(demo);
 
-  // Realistic extra members
-  const extraMembers: Omit<User, "passwordHash">[] = [
-    { id: "u_chidi", name: "Chidi Okonkwo", email: "chidi.o@gmail.com", phone: "+2348023456789", weight: 82, height: 180, bodyFat: 15, goals: "Strength training & muscle mass", role: "member", createdAt: new Date(Date.now() - 60 * 86400000).toISOString() },
-    { id: "u_fatima", name: "Fatima Bello", email: "fatima.bello@yahoo.com", phone: "+2348056789012", weight: 62, height: 165, bodyFat: 22, goals: "Fat loss & flexibility", role: "member", createdAt: new Date(Date.now() - 45 * 86400000).toISOString() },
-    { id: "u_david", name: "David Adeleke", email: "davido.fitness@outlook.com", phone: "+2348098765432", weight: 88, height: 185, bodyFat: 14, goals: "Bodybuilding & endurance", role: "member", createdAt: new Date(Date.now() - 30 * 86400000).toISOString() },
-    { id: "u_blessing", name: "Blessing Amadi", email: "blessing.a@hotmail.com", phone: "+2348123456789", weight: 68, height: 170, bodyFat: 20, goals: "Core strength & cardio", role: "member", createdAt: new Date(Date.now() - 25 * 86400000).toISOString() },
-    { id: "u_emeka", name: "Emeka Vance", email: "emeka.vance@gmail.com", phone: "+2348145678901", weight: 90, height: 182, bodyFat: 16, goals: "Powerlifting", role: "member", createdAt: new Date(Date.now() - 15 * 86400000).toISOString() },
-    { id: "u_aisha", name: "Aisha Abubakar", email: "aisha.a@yahoo.com", phone: "+2348167890123", weight: 58, height: 160, bodyFat: 21, goals: "Yoga & mental health", role: "member", createdAt: new Date(Date.now() - 10 * 86400000).toISOString() },
-  ];
-
-  for (const m of extraMembers) {
-    db.users.push({ ...m, passwordHash: hash });
-  }
-
-  // Memberships for all users
+  // Active membership for demo user
   const end1Y = new Date(); end1Y.setFullYear(end1Y.getFullYear() + 1);
-  const end1M = new Date(); end1M.setMonth(end1M.getMonth() + 1);
-
-  db.memberships.push(
-    { userId: demo.id, plan: "PREMIUM", status: "ACTIVE", startDate: new Date(Date.now() - 30 * 86400000).toISOString(), endDate: end1Y.toISOString(), autoRenew: true },
-    { userId: "u_chidi", plan: "ELITE", status: "ACTIVE", startDate: new Date(Date.now() - 60 * 86400000).toISOString(), endDate: end1Y.toISOString(), autoRenew: true },
-    { userId: "u_fatima", plan: "PREMIUM", status: "ACTIVE", startDate: new Date(Date.now() - 45 * 86400000).toISOString(), endDate: end1M.toISOString(), autoRenew: false },
-    { userId: "u_david", plan: "ELITE", status: "ACTIVE", startDate: new Date(Date.now() - 30 * 86400000).toISOString(), endDate: end1Y.toISOString(), autoRenew: true },
-    { userId: "u_blessing", plan: "BASIC", status: "ACTIVE", startDate: new Date(Date.now() - 25 * 86400000).toISOString(), endDate: end1M.toISOString(), autoRenew: true },
-    { userId: "u_emeka", plan: "BASIC", status: "ACTIVE", startDate: new Date(Date.now() - 15 * 86400000).toISOString(), endDate: end1M.toISOString(), autoRenew: false },
-    { userId: "u_aisha", plan: "PREMIUM", status: "ACTIVE", startDate: new Date(Date.now() - 10 * 86400000).toISOString(), endDate: end1Y.toISOString(), autoRenew: true }
-  );
-
-  // 5 weeks of progress entries for the demo chart
-  for (let i = 28; i >= 0; i -= 7) {
-    db.progress.push({
-      id: uid(),
-      userId: demo.id,
-      date: new Date(Date.now() - i * 86400000).toISOString(),
-      weight: 78 - i * 0.1,
-      bodyFat: 20 - i * 0.07,
-      muscleMass: 34 + i * 0.05,
-    });
-  }
-
-  // Active bookings across classes for various members
-  const nextDate = (dow: number) => {
-    const d = new Date();
-    d.setDate(d.getDate() + ((dow - d.getDay() + 7) % 7));
-    return d.toISOString();
-  };
-
-  const usersList = [demo.id, "u_chidi", "u_fatima", "u_david", "u_blessing", "u_emeka", "u_aisha"];
-  db.classes.forEach((c, idx) => {
-    const u1 = usersList[idx % usersList.length];
-    const u2 = usersList[(idx + 1) % usersList.length];
-    db.bookings.push(
-      { id: uid(), userId: u1, classId: c.id, date: nextDate(c.dayOfWeek), status: "CONFIRMED" },
-      { id: uid(), userId: u2, classId: c.id, date: nextDate(c.dayOfWeek), status: "CONFIRMED" }
-    );
+  db.memberships.push({
+    userId: demo.id,
+    plan: "PREMIUM",
+    status: "ACTIVE",
+    startDate: new Date().toISOString(),
+    endDate: end1Y.toISOString(),
+    autoRenew: true,
   });
-
-  // Workout logs
-  db.workoutLogs.push(
-    { id: uid(), userId: demo.id, workoutId: db.workouts[0].id, date: new Date(Date.now() - 2 * 86400000).toISOString(), duration: 30 },
-    { id: uid(), userId: demo.id, workoutId: db.workouts[1].id, date: new Date(Date.now() - 5 * 86400000).toISOString(), duration: 45 },
-    { id: uid(), userId: "u_chidi", workoutId: db.workouts[1].id, date: new Date(Date.now() - 1 * 86400000).toISOString(), duration: 50 },
-    { id: uid(), userId: "u_fatima", workoutId: db.workouts[2].id, date: new Date(Date.now() - 3 * 86400000).toISOString(), duration: 25 },
-    { id: uid(), userId: "u_david", workoutId: db.workouts[4].id, date: new Date(Date.now() - 4 * 86400000).toISOString(), duration: 60 }
-  );
-
-  // Payment history for all users
-  const mkPay = (uId: string, amount: number, type: string, desc: string, daysAgo: number): Payment => ({
-    id: uid(),
-    userId: uId,
-    amount,
-    currency: "NGN",
-    status: "COMPLETED",
-    reference: "GB-" + Math.random().toString(36).slice(2, 10).toUpperCase(),
-    type,
-    description: desc,
-    createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString(),
-  });
-
-  db.payments.push(
-    mkPay(demo.id, 35000, "MEMBERSHIP", "Premium Membership - Monthly", 30),
-    mkPay(demo.id, 15000, "PT_SESSION", "Personal Training Session x2", 12),
-    mkPay(demo.id, 5000, "CLASS_PACK", "Class Pack Top-up", 3),
-    mkPay("u_chidi", 65000, "MEMBERSHIP", "Elite Membership - Annual", 60),
-    mkPay("u_chidi", 25000, "SUPPLEMENTS", "Whey Protein & Creatine", 14),
-    mkPay("u_fatima", 35000, "MEMBERSHIP", "Premium Membership - Monthly", 45),
-    mkPay("u_david", 65000, "MEMBERSHIP", "Elite Membership - Annual", 30),
-    mkPay("u_blessing", 15000, "MEMBERSHIP", "Basic Membership - Monthly", 25),
-    mkPay("u_emeka", 15000, "MEMBERSHIP", "Basic Membership - Monthly", 15),
-    mkPay("u_aisha", 35000, "MEMBERSHIP", "Premium Membership - Monthly", 10)
-  );
 
   saveDB(db);
   return db;
@@ -866,4 +785,3 @@ export function deletePayment(id: string) {
   db.payments = db.payments.filter((p) => p.id !== id);
   saveDB(db);
 }
-
