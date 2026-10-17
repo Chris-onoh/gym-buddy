@@ -14,13 +14,6 @@ export function cn(...inputs: ClassValue[]) {
   return result;
 }
 
-export function formatCurrency(amount: number, currency = "NGN"): string {
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency,
-  }).format(amount);
-}
-
 export function formatDate(date: string | Date): string {
   return new Date(date).toLocaleDateString("en-NG", {
     year: "numeric",
@@ -72,8 +65,6 @@ export const MEMBERSHIP_PLANS = [
   {
     plan: "BASIC",
     name: "Basic",
-    price: 15000,
-    period: "month",
     features: [
       "Access to gym floor",
       "5 group classes/month",
@@ -84,8 +75,6 @@ export const MEMBERSHIP_PLANS = [
   {
     plan: "PREMIUM",
     name: "Premium",
-    price: 35000,
-    period: "month",
     features: [
       "Unlimited gym access",
       "Unlimited group classes",
@@ -99,8 +88,6 @@ export const MEMBERSHIP_PLANS = [
   {
     plan: "ELITE",
     name: "Elite",
-    price: 65000,
-    period: "month",
     features: [
       "All Premium features",
       "4 PT sessions/month",
@@ -111,24 +98,4 @@ export const MEMBERSHIP_PLANS = [
     ],
     color: "from-accent-500 to-accent-700",
   },
-  {
-    plan: "PAY_AS_YOU_GO",
-    name: "Pay As You Go",
-    price: 3000,
-    period: "visit",
-    features: [
-      "Single visit access",
-      "1 group class included",
-      "No commitment",
-      "Perfect for travelers",
-    ],
-    color: "from-blue-500 to-blue-700",
-  },
 ];
-
-export function generateReference(): string {
-  const prefix = "GB";
-  const timestamp = Date.now().toString(36).toUpperCase();
-  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-  return `${prefix}-${timestamp}-${random}`;
-}

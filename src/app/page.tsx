@@ -24,12 +24,6 @@ export default function LandingPage() {
                 Features
               </Link>
               <Link
-                href="#plans"
-                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                Plans
-              </Link>
-              <Link
                 href="#testimonials"
                 className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
               >
@@ -79,7 +73,7 @@ export default function LandingPage() {
                 href="/register"
                 className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 text-base font-bold text-white bg-primary-600 rounded-2xl hover:bg-primary-700 transition-all shadow-lg shadow-primary-200"
               >
-                Start Free Trial
+                Start Training
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>
               <Link
@@ -141,7 +135,7 @@ export default function LandingPage() {
                 icon: Star,
                 title: "Membership Management",
                 description:
-                  "Upgrade, renew, or manage your membership in seconds. Flexible plans that fit your lifestyle and budget.",
+                  "See your current membership tier and everything included with your plan.",
                 color: "from-yellow-500 to-yellow-600",
               },
               {
@@ -172,130 +166,6 @@ export default function LandingPage() {
                 </div>
               );
             })}
-          </div>
-        </div>
-      </section>
-
-      {/* Plans */}
-      <section id="plans" className="py-20 lg:py-28 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 font-display">
-              Choose your{" "}
-              <span className="text-primary-600">plan</span>
-            </h2>
-            <p className="mt-4 text-lg text-gray-600">
-              Flexible options designed to fit your fitness goals and budget.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                name: "Basic",
-                price: "₦15,000",
-                period: "/month",
-                features: [
-                  "Gym floor access",
-                  "5 group classes/month",
-                  "Locker room access",
-                ],
-                popular: false,
-              },
-              {
-                name: "Premium",
-                price: "₦35,000",
-                period: "/month",
-                features: [
-                  "Unlimited gym access",
-                  "Unlimited group classes",
-                  "Locker room + sauna",
-                  "1 PT session/month",
-                  "Progress tracking",
-                ],
-                popular: true,
-              },
-              {
-                name: "Elite",
-                price: "₦65,000",
-                period: "/month",
-                features: [
-                  "All Premium features",
-                  "4 PT sessions/month",
-                  "Nutrition planning",
-                  "Priority booking",
-                  "2 Guest passes/month",
-                  "Exclusive events",
-                ],
-                popular: false,
-              },
-              {
-                name: "Pay As You Go",
-                price: "₦3,000",
-                period: "/visit",
-                features: [
-                  "Single visit access",
-                  "1 group class included",
-                  "No commitment",
-                  "Perfect for travelers",
-                ],
-                popular: false,
-              },
-            ].map((plan, i) => (
-              <div
-                key={i}
-                className={`relative p-8 rounded-2xl border-2 transition-all duration-300 ${
-                  plan.popular
-                    ? "border-primary-500 bg-white shadow-xl shadow-primary-100 scale-[1.02]"
-                    : "border-gray-100 bg-white hover:shadow-lg hover:border-gray-200"
-                }`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary-500 text-white text-xs font-bold rounded-full">
-                    MOST POPULAR
-                  </div>
-                )}
-                <h3 className="text-xl font-bold text-gray-900 mb-4">
-                  {plan.name}
-                </h3>
-                <div className="mb-6">
-                  <span className="text-4xl font-extrabold text-gray-900">
-                    {plan.price}
-                  </span>
-                  <span className="text-gray-500 ml-1">{plan.period}</span>
-                </div>
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((f, j) => (
-                    <li key={j} className="flex items-start gap-3">
-                      <svg
-                        className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      <span className="text-sm text-gray-600">{f}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href="/register"
-                  className={`block w-full py-3 text-center text-sm font-bold rounded-xl transition-all ${
-                    plan.popular
-                      ? "bg-primary-600 text-white hover:bg-primary-700 shadow-md"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  Get Started
-                </Link>
-              </div>
-            ))}
           </div>
         </div>
       </section>

@@ -12,11 +12,10 @@ export interface UserProfile {
 }
 
 export interface MembershipPlan {
-  plan: "BASIC" | "PREMIUM" | "ELITE" | "PAY_AS_YOU_GO";
+  plan: "BASIC" | "PREMIUM" | "ELITE";
   status: "ACTIVE" | "EXPIRED" | "CANCELLED" | "PENDING";
   startDate: string;
   endDate: string;
-  autoRenew: boolean;
 }
 
 export interface GymClass {
@@ -119,16 +118,4 @@ export interface ProgressEntry {
   bodyFat: number | null;
   muscleMass: number | null;
   notes: string | null;
-}
-
-export interface Payment {
-  id: string;
-  userId: string;
-  amount: number;
-  currency: string;
-  status: "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
-  reference: string;
-  type: "MEMBERSHIP" | "PT_SESSION" | "CLASS_PACK" | "OTHER";
-  description: string | null;
-  createdAt: string;
 }

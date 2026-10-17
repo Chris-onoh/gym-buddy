@@ -9,7 +9,6 @@ import {
   Dumbbell,
   UserCircle,
   CreditCard,
-  Receipt,
   TrendingUp,
   LogOut,
   ChevronLeft,
@@ -42,11 +41,6 @@ const baseNavItems = [
     href: "/membership",
     label: "Membership",
     icon: CreditCard,
-  },
-  {
-    href: "/payments",
-    label: "Payments",
-    icon: Receipt,
   },
   {
     href: "/progress",

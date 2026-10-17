@@ -3,18 +3,16 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { getDB, getMembership, upgradeMembership } from "@/lib/store";
+import { getDB, getMembership } from "@/lib/store";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { MEMBERSHIP_PLANS, formatDate, formatCurrency } from "@/lib/utils";
+import { MEMBERSHIP_PLANS, formatDate } from "@/lib/utils";
 import { Check, Calendar } from "lucide-react";
 
 export default function MembershipPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [ready, setReady] = useState(false);
-  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
@@ -38,16 +36,11 @@ export default function MembershipPage() {
   const membership = getMembership(user.id);
   const isActive = membership.status === "ACTIVE";
 
-  const handleUpgrade = (plan: string) => {
-    upgradeMembership(user.id, plan);
-    setVersion(version + 1);
-  };
-
   return (
     <div className="page-container space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">My Membership</h1>
-        <p className="text-gray-600 mt-1">Manage your plan and billing</p>
+        <p className="text-gray-600 mt-1">View your membership plan and its features</p>
       </div>
 
       {isActive && (
@@ -81,10 +74,6 @@ export default function MembershipPage() {
                 <h3 className="font-bold text-gray-900">{plan.name}</h3>
                 {plan.popular && <Badge variant="warning" size="sm">Popular</Badge>}
               </div>
-              <div className="mb-4">
-                <span className="text-3xl font-extrabold text-gray-900">{formatCurrency(plan.price)}</span>
-                <span className="text-gray-500 text-sm ml-1">/{plan.period}</span>
-              </div>
               <ul className="space-y-2 mb-6">
                 {plan.features.map((f, j) => (
                   <li key={j} className="flex items-start gap-2 text-sm text-gray-600">
@@ -92,14 +81,6 @@ export default function MembershipPage() {
                   </li>
                 ))}
               </ul>
-              <Button
-                variant={isCurrent ? "outline" : "primary"}
-                className="w-full"
-                disabled={isCurrent}
-                onClick={() => handleUpgrade(plan.plan)}
-              >
-                {isCurrent ? "Current Plan" : "Upgrade"}
-              </Button>
             </Card>
           );
         })}

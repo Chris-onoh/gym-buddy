@@ -99,19 +99,6 @@ export interface Membership {
   status: string;
   startDate: string;
   endDate: string;
-  autoRenew: boolean;
-}
-
-export interface Payment {
-  id: string;
-  userId: string;
-  amount: number;
-  currency: string;
-  status: string;
-  reference: string;
-  type: string;
-  description: string;
-  createdAt: string;
 }
 
 interface DB {
@@ -123,7 +110,6 @@ interface DB {
   workoutLogs: WorkoutLog[];
   progress: ProgressEntry[];
   memberships: Membership[];
-  payments: Payment[];
 }
 
 const DB_KEY = "gymbuddy_db_v1";
@@ -270,7 +256,6 @@ function seedDB(): DB {
     workoutLogs: [],
     progress: [],
     memberships: [],
-    payments: [],
   };
 
   db.classes = SEED_CLASSES.map((c) => ({ ...c, id: uid() }));
@@ -339,7 +324,6 @@ export async function getDB(): Promise<DB> {
     status: "ACTIVE",
     startDate: new Date().toISOString(),
     endDate: end1Y.toISOString(),
-    autoRenew: true,
   });
 
   saveDB(db);
@@ -389,7 +373,6 @@ export async function registerUser(
     status: "ACTIVE",
     startDate: todayStr(),
     endDate: end.toISOString(),
-    autoRenew: false,
   });
   saveDB(db);
   return { ok: true, user };
@@ -599,54 +582,10 @@ export function getMembership(userId: string): Membership {
     status: "ACTIVE",
     startDate: todayStr(),
     endDate: end.toISOString(),
-    autoRenew: false,
   };
   db.memberships.push(m);
   saveDB(db);
   return m;
-}
-
-export function upgradeMembership(userId: string, plan: string): Membership {
-  const db = cache!;
-  const end = new Date();
-  end.setMonth(end.getMonth() + 1);
-  const m = getMembership(userId);
-  m.plan = plan;
-  m.status = "ACTIVE";
-  m.endDate = end.toISOString();
-  saveDB(db);
-  return m;
-}
-
-// ---------- Payments ----------
-
-export function getPayments(userId: string): Payment[] {
-  const db = cache;
-  if (!db) return [];
-  return db.payments.filter((p) => p.userId === userId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-}
-
-export function createPayment(
-  userId: string,
-  amount: number,
-  type: string,
-  description: string
-): Payment {
-  const db = cache!;
-  const p: Payment = {
-    id: uid(),
-    userId,
-    amount,
-    currency: "NGN",
-    status: "COMPLETED",
-    reference: "GB-" + Math.random().toString(36).slice(2, 10).toUpperCase(),
-    type,
-    description,
-    createdAt: todayStr(),
-  };
-  db.payments.push(p);
-  saveDB(db);
-  return p;
 }
 
 // ---------- Progress ----------
@@ -757,7 +696,6 @@ export function updateUserMembershipPlan(userId: string, plan: string) {
       status: "ACTIVE",
       startDate: todayStr(),
       endDate: end.toISOString(),
-      autoRenew: true,
     });
     saveDB(db);
   }
@@ -770,7 +708,6 @@ export function deleteUser(userId: string) {
   db.bookings = db.bookings.filter((b) => b.userId !== userId);
   db.workoutLogs = db.workoutLogs.filter((l) => l.userId !== userId);
   db.progress = db.progress.filter((p) => p.userId !== userId);
-  db.payments = db.payments.filter((p) => p.userId !== userId);
   saveDB(db);
 }
 
@@ -780,8 +717,3 @@ export function deleteBooking(id: string) {
   saveDB(db);
 }
 
-export function deletePayment(id: string) {
-  const db = cache!;
-  db.payments = db.payments.filter((p) => p.id !== id);
-  saveDB(db);
-}

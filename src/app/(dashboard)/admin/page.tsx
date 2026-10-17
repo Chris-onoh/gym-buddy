@@ -9,7 +9,6 @@ import {
   type Booking,
   type Workout,
   type WorkoutLog,
-  type Payment,
   type Membership,
   saveDB,
   resetDB,
@@ -21,9 +20,7 @@ import {
   updateUserMembershipPlan,
   deleteUser,
   deleteBooking,
-  deletePayment,
   bookClass,
-  createPayment,
 } from "@/lib/store";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -38,14 +35,12 @@ import {
   TrendingUp,
   Plus,
   Users,
-  CreditCard,
   X,
   UserCheck,
   CheckCircle2,
-  DollarSign,
 } from "lucide-react";
 
-type Tab = "overview" | "classes" | "workouts" | "members" | "bookings" | "payments";
+type Tab = "overview" | "classes" | "workouts" | "members" | "bookings";
 
 export default function AdminPage() {
   const { user, loading, login, logout } = useAuth();
@@ -132,7 +127,6 @@ function AdminDashboard({ tab, setTab, onLogout }: { tab: Tab; setTab: (t: Tab) 
   const [showAddClass, setShowAddClass] = useState(false);
   const [showAddWorkout, setShowAddWorkout] = useState(false);
   const [showAddBooking, setShowAddBooking] = useState(false);
-  const [showAddPayment, setShowAddPayment] = useState(false);
 
   // Forms state
   const [newClass, setNewClass] = useState({
@@ -146,7 +140,6 @@ function AdminDashboard({ tab, setTab, onLogout }: { tab: Tab; setTab: (t: Tab) 
   });
 
   const [newBooking, setNewBooking] = useState({ userId: "", classId: "" });
-  const [newPayment, setNewPayment] = useState({ userId: "", amount: 15000, type: "MEMBERSHIP", description: "Monthly Membership" });
 
   const db = useMemo(() => {
     const raw = typeof window !== "undefined" ? window.localStorage.getItem("gymbuddy_db_v1") : null;
@@ -161,10 +154,7 @@ function AdminDashboard({ tab, setTab, onLogout }: { tab: Tab; setTab: (t: Tab) 
   const workouts: Workout[] = db.workouts || [];
   const workoutLogs: WorkoutLog[] = db.workoutLogs || [];
   const users: User[] = db.users || [];
-  const payments: Payment[] = db.payments || [];
   const memberships: Membership[] = db.memberships || [];
-
-  const totalRevenue = payments.reduce((acc, p) => acc + (p.amount || 0), 0);
 
   const tabs: { key: Tab; label: string; icon: typeof Shield; count: number }[] = [
     { key: "overview", label: "Overview", icon: Shield, count: 0 },
@@ -172,7 +162,6 @@ function AdminDashboard({ tab, setTab, onLogout }: { tab: Tab; setTab: (t: Tab) 
     { key: "workouts", label: "Workouts", icon: Dumbbell, count: workouts.length },
     { key: "members", label: "Members", icon: Users, count: users.filter((u) => u.role !== "admin").length },
     { key: "bookings", label: "Bookings", icon: CalendarDays, count: bookings.length },
-    { key: "payments", label: "Payments", icon: CreditCard, count: payments.length },
   ];
 
   function handleReset() {
@@ -222,14 +211,6 @@ function AdminDashboard({ tab, setTab, onLogout }: { tab: Tab; setTab: (t: Tab) 
     refresh();
   }
 
-  function handleCreatePayment(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newPayment.userId || !newPayment.amount) return;
-    createPayment(newPayment.userId, Number(newPayment.amount), newPayment.type, newPayment.description);
-    setShowAddPayment(false);
-    refresh();
-  }
-
   const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
@@ -241,7 +222,7 @@ function AdminDashboard({ tab, setTab, onLogout }: { tab: Tab; setTab: (t: Tab) 
             <Shield className="w-6 h-6 text-primary-600" />
             Admin Operations Center
           </h1>
-          <p className="text-gray-600 mt-1">Real-time management for gym classes, workouts, members & payments.</p>
+          <p className="text-gray-600 mt-1">Real-time management for gym classes, workouts, members & bookings.</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="danger" size="sm" onClick={handleReset}>
@@ -283,7 +264,7 @@ function AdminDashboard({ tab, setTab, onLogout }: { tab: Tab; setTab: (t: Tab) 
         <div className="space-y-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: "Total Revenue", value: `₦${totalRevenue.toLocaleString()}`, icon: DollarSign, color: "from-green-500 to-green-600" },
+              { label: "Bookings", value: bookings.length, icon: UserCheck, color: "from-accent-500 to-accent-600" },
               { label: "Active Members", value: users.filter((u) => u.role !== "admin").length, icon: Users, color: "from-blue-500 to-blue-600" },
               { label: "Gym Classes", value: classes.length, icon: CalendarDays, color: "from-primary-500 to-primary-600" },
               { label: "Workouts", value: workouts.length, icon: Dumbbell, color: "from-purple-500 to-purple-600" },
@@ -305,28 +286,7 @@ function AdminDashboard({ tab, setTab, onLogout }: { tab: Tab; setTab: (t: Tab) 
             })}
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle>Recent Transactions</CardTitle>
-                <Button size="sm" variant="outline" onClick={() => setTab("payments")}>View All</Button>
-              </CardHeader>
-              <div className="space-y-2">
-                {payments.slice(0, 5).map((p) => {
-                  const u = users.find((u) => u.id === p.userId);
-                  return (
-                    <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">{u?.name || "Member"}</p>
-                        <p className="text-xs text-gray-500">{p.description} · {new Date(p.createdAt).toLocaleDateString()}</p>
-                      </div>
-                      <span className="text-sm font-bold text-green-600">₦{p.amount.toLocaleString()}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-
+          <div className="grid gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle>Class Bookings Stream</CardTitle>
@@ -488,9 +448,9 @@ function AdminDashboard({ tab, setTab, onLogout }: { tab: Tab; setTab: (t: Tab) 
                           }}
                           className="text-xs font-semibold rounded-lg border border-gray-300 p-1 bg-white"
                         >
-                          <option value="BASIC">BASIC (₦15,000)</option>
-                          <option value="PREMIUM">PREMIUM (₦35,000)</option>
-                          <option value="ELITE">ELITE (₦65,000)</option>
+                          <option value="BASIC">BASIC</option>
+                          <option value="PREMIUM">PREMIUM</option>
+                          <option value="ELITE">ELITE</option>
                         </select>
                       </td>
                       <td className="p-3 text-right">
@@ -546,47 +506,6 @@ function AdminDashboard({ tab, setTab, onLogout }: { tab: Tab; setTab: (t: Tab) 
                       }}
                       className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
                       title="Cancel Booking"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      )}
-
-      {/* PAYMENTS TAB */}
-      {tab === "payments" && (
-        <Card>
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <CardTitle>Transaction & Revenue Logs ({payments.length})</CardTitle>
-              <p className="text-xs text-green-600 font-bold mt-1">Total Accumulated: ₦{totalRevenue.toLocaleString()}</p>
-            </div>
-            <Button size="sm" onClick={() => setShowAddPayment(true)}>
-              <Plus className="w-4 h-4 mr-1" /> Record New Payment
-            </Button>
-          </CardHeader>
-          <div className="divide-y divide-gray-100">
-            {payments.map((p) => {
-              const u = users.find((u) => u.id === p.userId);
-              return (
-                <div key={p.id} className="flex items-center justify-between py-3 px-2">
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">{u?.name || "Member"} <span className="text-xs text-gray-400">({p.reference})</span></p>
-                    <p className="text-xs text-gray-500">{p.description} · {new Date(p.createdAt).toLocaleDateString()}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-bold text-green-600">₦{p.amount.toLocaleString()}</span>
-                    <button
-                      onClick={() => {
-                        deletePayment(p.id);
-                        refresh();
-                      }}
-                      className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
-                      title="Delete Record"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -703,38 +622,6 @@ function AdminDashboard({ tab, setTab, onLogout }: { tab: Tab; setTab: (t: Tab) 
         </div>
       )}
 
-      {/* MODAL: ADD PAYMENT */}
-      {showAddPayment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-md space-y-4">
-            <div className="flex items-center justify-between border-b pb-2">
-              <h3 className="font-bold text-gray-900">Record Payment Transaction</h3>
-              <button onClick={() => setShowAddPayment(false)}><X className="w-5 h-5 text-gray-500" /></button>
-            </div>
-            <form onSubmit={handleCreatePayment} className="space-y-3">
-              <div>
-                <label className="text-xs font-semibold text-gray-700">Select Member</label>
-                <select className="w-full p-2 text-sm border rounded-xl" value={newPayment.userId} onChange={(e) => setNewPayment({ ...newPayment, userId: e.target.value })} required>
-                  <option value="">-- Choose Member --</option>
-                  {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                </select>
-              </div>
-              <Input label="Amount (NGN)" type="number" value={newPayment.amount} onChange={(e) => setNewPayment({ ...newPayment, amount: Number(e.target.value) })} required />
-              <Input label="Description" value={newPayment.description} onChange={(e) => setNewPayment({ ...newPayment, description: e.target.value })} required />
-              <div>
-                <label className="text-xs font-semibold text-gray-700">Type</label>
-                <select className="w-full p-2 text-sm border rounded-xl" value={newPayment.type} onChange={(e) => setNewPayment({ ...newPayment, type: e.target.value })}>
-                  <option value="MEMBERSHIP">MEMBERSHIP</option>
-                  <option value="PT_SESSION">PT_SESSION</option>
-                  <option value="SUPPLEMENTS">SUPPLEMENTS</option>
-                  <option value="CLASS_PACK">CLASS_PACK</option>
-                </select>
-              </div>
-              <Button type="submit" className="w-full mt-4">Save Transaction</Button>
-            </form>
-          </Card>
-        </div>
-      )}
     </div>
   );
 }
